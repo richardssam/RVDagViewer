@@ -1,13 +1,33 @@
+#
+#  Copyright (c) 2025 Sam Richards
+#  All rights reserved.
+#
+#  SPDX-License-Identifier: Apache-2.0
+#
+
 import sys
 import math
-from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
-                               QHBoxLayout, QGraphicsView, QGraphicsScene, 
-                               QGraphicsEllipseItem, QGraphicsLineItem, 
-                               QGraphicsTextItem, QTextEdit, QLabel, 
-                               QSplitter, QFrame)
-from PySide6.QtCore import Qt, QRectF, QPointF, Signal, QObject
-from PySide6.QtGui import QPen, QBrush, QColor, QFont, QWheelEvent, QPainter, QPolygonF
 
+try:
+    from PySide2.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
+                                QHBoxLayout, QGraphicsView, QGraphicsScene, 
+                                QGraphicsEllipseItem, QGraphicsLineItem, 
+                                QGraphicsTextItem, QTextEdit, QLabel, 
+                                QSplitter, QFrame)
+    from PySide2.QtCore import Qt, QRectF, QPointF, Signal, QObject
+    from PySide2.QtGui import QPen, QBrush, QColor, QFont, QWheelEvent, QPainter, QPolygonF
+except ImportError:
+  try:
+    from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
+                                QHBoxLayout, QGraphicsView, QGraphicsScene, 
+                                QGraphicsEllipseItem, QGraphicsLineItem, 
+                                QGraphicsTextItem, QTextEdit, QLabel, 
+                                QSplitter, QFrame)
+    from PySide6.QtCore import Qt, QRectF, QPointF, Signal, QObject
+    from PySide6.QtGui import QPen, QBrush, QColor, QFont, QWheelEvent, QPainter, QPolygonF
+
+  except ImportError:
+    pass
 
 class DAGNodeInterface:
     """
@@ -417,19 +437,6 @@ class DAGVisualizerWidget(QWidget):
 
             for child in dag_nodes[node_id].get_outputs():
                 walk_outputs(child.get_id(), dag_nodes, level + 1, foundnodes, rootchains, children_ids)
-
-
-        def walk_tree2(node_id, dag_nodes, x, y, positions):
-            layer_height = 200  # Increased vertical spacing
-            base_node_width = 150  # Base horizontal spacing
-            positions[node_id] = (x, y)
-            y = y + layer_height
-
-            for child in dag_nodes[node_id].get_children():
-                x = walk_tree(child.get_id(), dag_nodes, x, y, positions)
-            
-            x = x + base_node_width
-            return x
 
         def walk_tree(node_id, dag_nodes, x, y, positions):
             """ This handles a single root tree of nodes getting their positions."""

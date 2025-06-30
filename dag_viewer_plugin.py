@@ -1,3 +1,10 @@
+#
+#  Copyright (c) 2025 Sam Richards
+#  All rights reserved.
+#
+#  SPDX-License-Identifier: Apache-2.0
+#
+
 from __future__ import print_function
 
 import os
