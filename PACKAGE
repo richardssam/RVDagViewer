@@ -1,0 +1,26 @@
+package: DAG Viewer
+author: Sam Richards
+organization: ASWF
+version: 1.0
+requires: ''
+rv: 2024
+openrv: 2.0.0
+optional: true
+
+modes: 
+  - file: dag_viewer_plugin.py
+    menu: 'Tools/Dag Viewer'
+    shortcut: ''
+    event: ''
+    load: immediate
+
+file: 
+  - path: dagViewer.py
+    location: Python
+
+
+description: |
+    <p>
+    DAG Viewer for RV
+    </p>
+
