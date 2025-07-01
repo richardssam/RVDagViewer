@@ -11,6 +11,6 @@ This is an example screenshot when run from RV.
 
 ## Install
 
-You can use the dagviewer.zip to install directly.
+You can use the dagviewer.zip to install directly into RV and OpenRV using the Preferences/Packages -> "Add Packages" button.
 
 This has been tested with a fairly recent version of RV and OpenRV (2025).
