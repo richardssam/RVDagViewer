@@ -50,6 +50,14 @@ class DAGNodeInterface:
         """Return list of parent nodes"""
         raise NotImplementedError
     
+    def get_inputs(self):
+        """Return list of input nodes"""
+        raise NotImplementedError
+    
+    def get_outputs(self):
+        """Return list of output nodes"""
+        raise NotImplementedError
+    
     def get_attributes(self):
         """Return dictionary of node attributes for display"""
         raise NotImplementedError
@@ -57,23 +65,32 @@ class DAGNodeInterface:
 
 class DefaultDAGNode(DAGNodeInterface):
     """Default implementation - you can replace this with your own node class"""
-    def __init__(self, node_id, name, attributes=None):
+    def __init__(self, node_id, name, type, attributes=None):
         self.id = node_id
         self.name = name
+        self.type = type
         self.attributes = attributes or {}
         self.children = []
         self.parents = []
+        self.outputs = []
+        self.outputs = []
+        self.inputs = []
     
     def add_child(self, child_node):
         if child_node not in self.children:
             self.children.append(child_node)
             child_node.parents.append(self)
     
+    def add_output(self, child_node):
+        if child_node not in self.children:
+            self.outputs.append(child_node)
+            child_node.inputs.append(self)
+    
     def get_id(self):
         return self.id
     
     def get_type(self):
-        return None
+        return self.type
     
     def get_name(self):
         return self.name
@@ -87,13 +104,19 @@ class DefaultDAGNode(DAGNodeInterface):
     def get_attributes(self):
         return self.attributes
     
+    def get_inputs(self):
+        return self.inputs
+    
+    def get_outputs(self):
+        return self.outputs
+    
     def __str__(self):
         return f"Node({self.get_id()}: {self.get_name()})"
 
 
 class GraphicsNode(QGraphicsEllipseItem):
     """Visual representation of a DAG node"""
-    def __init__(self, dag_node, x, y, radius=30):
+    def __init__(self, dag_node, x, y, radius=40):
         super().__init__(-radius, -radius, radius*2, radius*2)
         self.dag_node = dag_node
         self.radius = radius
@@ -105,9 +128,9 @@ class GraphicsNode(QGraphicsEllipseItem):
         type = self.dag_node.get_type()
 
         if "Group" in type:
-            self.setBrush(QBrush(QColor(235, 206, 235)))  
+            self.setBrush(QBrush(QColor(150, 120, 100)))  
         else:
-            self.setBrush(QBrush(QColor(135, 206, 235)))  # Light blue
+            self.setBrush(QBrush(QColor(105, 120, 150)))  # Light blue
         self.setFlag(QGraphicsEllipseItem.ItemIsSelectable, True)
         self.setFlag(QGraphicsEllipseItem.ItemIsMovable, True)
         
@@ -349,8 +372,9 @@ class DAGVisualizerWidget(QWidget):
         properties_layout = QVBoxLayout(properties_widget)
         
         # Add instructions
-        instructions = QLabel("<H2>RV Dag Viewer</H2><P>Controls:</P><BL><LI>Mouse wheel: Zoom</LI><LI>Middle mouse: Pan</LI><LI>F: Fit to view</LI><LI>R: Reset zoom</LI><LI>Click node: Select</LI></BL>")
-        instructions.setStyleSheet("QLabel { background-color: #f0f0f0; font-color: #000000; padding: 5px; border: 1px solid #ccc; }")
+        instructions = QLabel("<HTML><H2>RV Dag Viewer</H2><P>Controls:</P><UL><LI>Mouse wheel: Zoom</LI><LI>Middle mouse: Pan</LI><LI>F: Fit to view</LI><LI>R: Reset zoom</LI><LI>Click node: Select</LI></UL></HTML>")
+        #instructions.setTextFormat(Qt.RichText)
+        instructions.setStyleSheet("QLabel { background-color: #f0f0f0; color: #808080; padding: 5px; border: 1px solid #ccc; }")
         properties_layout.addWidget(instructions)
         
         properties_layout.addWidget(QLabel("Node Properties:"))
@@ -401,7 +425,7 @@ class DAGVisualizerWidget(QWidget):
                 child_id = child.get_id()
                 if child_id in graphics_nodes:
                     end_graphics = graphics_nodes[child_id]
-                    edge = GraphicsEdge(start_graphics, end_graphics, QColor(0, 0, 0))
+                    edge = GraphicsEdge(start_graphics, end_graphics, QColor(200, 200, 200))
                     self.scene.addItem(edge)
 
             for child in dag_node.get_outputs():
@@ -417,10 +441,11 @@ class DAGVisualizerWidget(QWidget):
         self.view.fit_to_view()
     
     def calculate_layout(self):
-        """Improved layered layout algorithm with better spacing"""
+        """Figure out a layout for the DAG Node"""
         positions = {}
-        layer_height = 200  # Increased vertical spacing
-        base_node_width = 150  # Base horizontal spacing
+        layer_height = 150  # Vertical spacing
+        base_node_width = 110  # Base horizontal spacing
+
         # find nodes with no parents.
         roots = []
         for node_id, node in self.dag_nodes.items():
@@ -429,6 +454,7 @@ class DAGVisualizerWidget(QWidget):
 
 
         def walk_outputs(node_id, dag_nodes, level, foundnodes, rootchains, children_ids):
+            """Make sure we find all the output nodes"""
             if node_id not in children_ids:
                 return
             if node_id not in foundnodes:
@@ -457,7 +483,7 @@ class DAGVisualizerWidget(QWidget):
                     childroots.append(child.get_id())
                     rootchains[child.get_id()] = []
                     walk_outputs(child.get_id(), dag_nodes, 0, foundnodes, rootchains[child.get_id()], children_ids)
-            
+
             for child in children:
                 if child.get_id() not in foundnodes:
                     print("Lost child:", child.get_id())
@@ -474,7 +500,7 @@ class DAGVisualizerWidget(QWidget):
                 positions[root] = (x, y)
 
                 x = x + base_node_width
-                
+
                 for child in chain:
                     #positions[child] = (x, y)
                     #x = x + base_node_width
@@ -483,8 +509,7 @@ class DAGVisualizerWidget(QWidget):
                     x = walk_tree(child, dag_nodes, x, y, positions)
                 y = y + 100
                 max_x = max(x, max_x) # we do this to ensure that we are getting the biggest of the chains.
-            #for child in sortchildren:
-            #    x = walk_tree(child.get_id(), dag_nodes, x, y, positions)
+
             return max_x
 
         x = 0
@@ -502,56 +527,6 @@ class DAGVisualizerWidget(QWidget):
                 x = x + base_node_width
     
         return positions
-        # Topological sort to determine layers
-        layers = self.topological_layers()
-        
-        # Calculate layout parameters
-
-        
-        for layer_idx, layer_nodes in enumerate(layers):
-            y = layer_idx * layer_height
-            layer_count = len(layer_nodes)
-            
-            # Dynamic width based on number of nodes in layer
-            if layer_count == 1:
-                # Single node centered
-                positions[layer_nodes[0]] = (0, y)
-            else:
-                # Multiple nodes spread out
-                total_width = (layer_count - 1) * base_node_width
-                start_x = -total_width / 2
-                
-                for node_idx, node_id in enumerate(layer_nodes):
-                    x = start_x + node_idx * base_node_width
-                    positions[node_id] = (x, y)
-        
-        return positions
-    
-    def topological_layers(self):
-        """Group nodes into layers for visualization"""
-        # Find nodes with no parents (roots)
-        in_degree = {node_id: len(node.get_parents()) for node_id, node in self.dag_nodes.items()}
-        layers = []
-        remaining = set(self.dag_nodes.keys())
-        
-        while remaining:
-            # Find nodes with no remaining dependencies
-            current_layer = [node_id for node_id in remaining if in_degree[node_id] == 0]
-            if not current_layer:
-                # Handle cycles by taking any remaining node
-                current_layer = [next(iter(remaining))]
-            
-            layers.append(current_layer)
-            
-            # Remove current layer nodes and update in-degrees
-            for node_id in current_layer:
-                remaining.remove(node_id)
-                for child in self.dag_nodes[node_id].get_children():
-                    child_id = child.get_id()
-                    if child_id in in_degree:
-                        in_degree[child_id] -= 1
-        
-        return layers
     
     def on_node_selected(self, dag_node):
         """Handle node selection"""
@@ -588,18 +563,18 @@ def create_sample_dag():
     
     # Create nodes with various attributes
     node_data = [
-        ("A", "Source1", {"type": "data_source", "format": "csv", "size": "1.2MB"}),
-        ("B", "Source2", {"type": "data_source", "format": "json", "size": "800KB"}),
-        ("C", "Filter", {"type": "transform", "operation": "filter", "rows_processed": 15000}),
-        ("D", "Aggregate", {"type": "transform", "operation": "aggregate", "group_by": "category"}),
-        ("E", "Join", {"type": "merge", "join_type": "inner", "key": "id"}),
-        ("F", "Validate", {"type": "quality_check", "rules": 5, "pass_rate": "98.5%"}),
-        ("G", "Export", {"type": "sink", "destination": "database", "table": "results"}),
-        ("H", "Archive", {"type": "sink", "destination": "s3", "bucket": "data-archive"}),
+        ("A", "Source1", "SourceGroup", {"type": "data_source", "format": "csv", "size": "1.2MB"}),
+        ("B", "Source2", "SourceGroup", {"type": "data_source", "format": "json", "size": "800KB"}),
+        ("C", "Filter", "Filter", {"type": "transform", "operation": "filter", "rows_processed": 15000}),
+        ("D", "Aggregate", "Generic", {"type": "transform", "operation": "aggregate", "group_by": "category"}),
+        ("E", "Join", "Generic", {"type": "merge", "join_type": "inner", "key": "id"}),
+        ("F", "Validate", "Generic", {"type": "quality_check", "rules": 5, "pass_rate": "98.5%"}),
+        ("G", "Export", "Generic", {"type": "sink", "destination": "database", "table": "results"}),
+        ("H", "Archive", "Generic", {"type": "sink", "destination": "s3", "bucket": "data-archive"}),
     ]
     
-    for node_id, name, attrs in node_data:
-        nodes[node_id] = DefaultDAGNode(node_id, name, attrs)
+    for node_id, name, type, attrs in node_data:
+        nodes[node_id] = DefaultDAGNode(node_id, name, type, attrs)
     
     # Define connections to create a more interesting DAG structure
     connections = [
@@ -612,6 +587,17 @@ def create_sample_dag():
         ("F", "H"),  # Validate -> Archive
     ]
     
+    # Define connections to create a more interesting DAG structure
+    ref_connections = [
+        ("A", "C"),  # Source1 -> Filter
+        ("B", "D"),  # Source2 -> Aggregate  
+        ("C", "E"),  # Filter -> Join
+        ("D", "E"),  # Aggregate -> Join
+        ("E", "F"),  # Join -> Validate
+        ("F", "G"),  # Validate -> Export
+        ("F", "H"),  # Validate -> Archive
+    ]
+
     for parent_id, child_id in connections:
         nodes[parent_id].add_child(nodes[child_id])
     
@@ -623,7 +609,7 @@ class DAGVisualizerWindow(QMainWindow):
     """Example window for standalone usage - you probably won't need this"""
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("DAG Node Network Visualizer - PySide6")
+        self.setWindowTitle("DAG Node Network Visualizer")
         self.setGeometry(100, 100, 1200, 800)
         
         # Create the widget and set it as central widget
@@ -636,14 +622,8 @@ def main():
     """Example of how to use the widget standalone"""
     app = QApplication(sys.argv)
     
-    # Option 1: Use as a standalone window
     window = DAGVisualizerWindow()
     window.show()
-    
-    # Option 2: Use as a widget in your existing application
-    # dag_nodes = your_existing_dag_nodes  # Your DAG data
-    # dag_widget = DAGVisualizerWidget(dag_nodes, parent=your_parent_widget)
-    # your_layout.addWidget(dag_widget)
     
     sys.exit(app.exec())
 
